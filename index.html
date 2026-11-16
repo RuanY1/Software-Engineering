@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>通讯录 · Address Book</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 3h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/>
+        <path d="M14 3v5h5"/>
+        <path d="M18 21l-2-2 2-2"/>
+      </svg>
+    </div>
+    <div class="brand-text">
+      <h1>通讯录</h1>
+      <p>Address Book</p>
+    </div>
+  </div>
+
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <circle cx="11" cy="11" r="7"/><path d="M20 20l-3.2-3.2"/>
+    </svg>
+    <input id="searchInput" type="search" placeholder="搜索姓名、公司、电话、邮箱…" autocomplete="off">
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-ghost" id="importBtn" title="从 Excel 文件导入联系人">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7.5 10.5L12 15l4.5-4.5"/><path d="M4 17v3h16v-3"/></svg>
+      <span>导入 Excel</span>
+    </button>
+    <button class="btn btn-ghost" id="exportBtn" title="把全部联系人导出为 Excel 文件">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M7.5 7.5L12 3l4.5 4.5"/><path d="M4 17v3h16v-3"/></svg>
+      <span>导出 Excel</span>
+    </button>
+    <button class="btn btn-primary" id="addBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      <span>新建联系人</span>
+    </button>
+  </div>
+  <input type="file" id="fileInput" accept=".xlsx,.xls" hidden>
+</header>
+
+<main class="page">
+  <div class="toolbar">
+    <div class="tabs" id="tabs">
+      <button class="tab is-active" data-filter="all">全部 <span class="badge" id="countAll">0</span></button>
+      <button class="tab" data-filter="bookmark">
+        <svg class="tab-star" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.5l2.6 5.3 5.9.9-4.2 4.1 1 5.8-5.3-2.8-5.3 2.8 1-5.8L3.5 9.7l5.9-.9z"/></svg>
+        收藏 <span class="badge" id="countMark">0</span>
+      </button>
+    </div>
+    <p class="hint">数据自动保存在本机浏览器中 · 支持 Excel 导入导出</p>
+  </div>
+
+  <section class="grid" id="list"></section>
+
+  <section class="empty" id="empty" hidden>
+    <div class="empty-art">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h9L20 9.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5z"/>
+        <path d="M14 4v6h6"/><circle cx="10" cy="13" r="2"/><path d="M7 18c.5-1.6 1.6-2.4 3-2.4s2.5.8 3 2.4"/>
+      </svg>
+    </div>
+    <h2 id="emptyTitle">还没有联系人</h2>
+    <p id="emptyText">新建第一个联系人，或者先载入几条示例数据看看效果。</p>
+    <div class="empty-actions">
+      <button class="btn btn-primary" id="emptyAddBtn">新建联系人</button>
+      <button class="btn btn-ghost" id="seedBtn">载入示例数据</button>
+    </div>
+  </section>
+</main>
+
+<!-- ========== 编辑 / 新建 联系人弹窗 ========== -->
+<div class="overlay" id="overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-head">
+      <h2 id="modalTitle">新建联系人</h2>
+      <button class="icon-btn" id="closeBtn" title="关闭">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <div class="field-grid">
+        <label class="field">
+          <span>姓名 <i>*</i></span>
+          <input id="fName" maxlength="40" placeholder="例如：王小明">
+        </label>
+        <label class="field">
+          <span>公司 / 院系</span>
+          <input id="fCompany" maxlength="60" placeholder="选填">
+        </label>
+      </div>
+
+      <label class="check">
+        <input type="checkbox" id="fBookmark">
+        <span>收藏这个联系人（列表里置顶显示）</span>
+      </label>
+
+      <div class="group" data-kind="phones">
+        <div class="group-head">
+          <span class="g-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.23 11.4 11.4 0 0 0 3.6.58 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1 11.4 11.4 0 0 0 .58 3.6 1 1 0 0 1-.24 1z"/></svg></span>
+          <span>电话</span>
+          <button type="button" class="add-btn">+ 添加</button>
+        </div>
+        <div class="dyn-list"></div>
+      </div>
+
+      <div class="group" data-kind="emails">
+        <div class="group-head">
+          <span class="g-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.5 6.5L12 13l8.5-6.5"/></svg></span>
+          <span>邮箱</span>
+          <button type="button" class="add-btn">+ 添加</button>
+        </div>
+        <div class="dyn-list"></div>
+      </div>
+
+      <div class="group" data-kind="socials">
+        <div class="group-head">
+          <span class="g-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12.5c0 3.6-3.6 6.5-8 6.5a9.6 9.6 0 0 1-2.6-.35L5 20.5l1.1-3.2A6.3 6.3 0 0 1 4 12.5C4 8.9 7.6 6 12 6s8 2.9 8 6.5z"/></svg></span>
+          <span>社交账号</span>
+          <button type="button" class="add-btn">+ 添加</button>
+        </div>
+        <div class="dyn-list"></div>
+      </div>
+
+      <div class="group" data-kind="addresses">
+        <div class="group-head">
+          <span class="g-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/></svg></span>
+          <span>地址</span>
+          <button type="button" class="add-btn">+ 添加</button>
+        </div>
+        <div class="dyn-list"></div>
+      </div>
+
+      <label class="field">
+        <span>备注</span>
+        <textarea id="fNotes" rows="2" maxlength="200" placeholder="选填，例如：实验室同学 / 项目对接人"></textarea>
+      </label>
+    </div>
+
+    <div class="modal-foot">
+      <span class="err" id="formErr"></span>
+      <button class="btn btn-ghost" id="cancelBtn">取消</button>
+      <button class="btn btn-primary" id="saveBtn">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 通用确认 / 选择弹窗 ========== -->
+<div class="overlay" id="dialogOverlay" hidden>
+  <div class="modal modal-sm" role="dialog" aria-modal="true">
+    <div class="modal-head"><h2 id="dialogTitle">提示</h2></div>
+    <div class="modal-body"><p id="dialogText" class="dialog-text"></p></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="dialogCancel">取消</button>
+      <button class="btn btn-ghost" id="dialogAlt" hidden></button>
+      <button class="btn btn-primary" id="dialogOk">确定</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="script.js"></script>
+</body>
+</html>
